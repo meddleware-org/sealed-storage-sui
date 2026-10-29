@@ -67,7 +67,7 @@ The full module/identity/roadmap tables live in [README.md](README.md) — keep 
 
 ## Deferred documentation — NOT for the `docs.` website (planned here per Part 0.4)
 
-> Captured for the future **`dev.meddleware.co.uk`** subdomain and white-label offering; excluded
+> Captured for the future **`meddleware.dev`** subdomain and white-label offering; excluded
 > from the user-facing `docs.` site.
 
 ### `dev.` — developer/integrator (to write later)

@@ -59,7 +59,7 @@ scripts, their tests and `CUSTODY.md`, F31, F34–F36); edition 2024.
 - Consumers (re-read 2026-10-18): `@meddleware/sealed-storage-client` 0.0.20 (released 2026-10-18; exact devDependency `0.0.7`,
   `src/deployments.ts` generated from it; 0.0.19 on 2026-10-09); the docs and dev sites (`^0.0.7`).
 
-**Review date:**
+**Review date:**; 0.0.11 re-verified 2026-10-30 (Point documentation links at the machine zone (ADR-0005))
 
 - 2026-09-18 — first pass.
 - 2026-09-28 — relocated.

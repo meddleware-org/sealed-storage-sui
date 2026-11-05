@@ -16,11 +16,11 @@
 **Project type:** Move package (+ on-chain operations scripts + npm package)
 **Template:**
 
-- AUDIT_TEMPLATE.md (2026-10-08)
+- AUDIT_TEMPLATE.md (2026-11-01)
 - AUDIT_TEMPLATE_SUI.md (2026-09-28)
 - AUDIT_TEMPLATE_SEAL.md (2026-09-30)
 - AUDIT_TEMPLATE_OPS.md (2026-10-08)
-- AUDIT_TEMPLATE_TS.md (2026-10-08) — npm-package rows only; the package ships no TypeScript.
+- AUDIT_TEMPLATE_TS.md (2026-11-01) — npm-package rows only; the package ships no TypeScript.
 - AUDIT_TEMPLATE_SUI_CLIENT.md (2026-10-08) — applied only to the transactions the scripts build with the
   Sui CLI (`sui client ptb --move-call` in `migrate.sh`, `sui client upgrade` in `upgrade.sh`,
   `sui client transfer`, `0x2::package::make_immutable`) and to the ID trace. The repository has no
@@ -59,7 +59,7 @@ scripts, their tests and `CUSTODY.md`, F31, F34–F36); edition 2024.
 - Consumers (re-read 2026-10-18): `@meddleware/sealed-storage-client` 0.0.20 (released 2026-10-18; exact devDependency `0.0.7`,
   `src/deployments.ts` generated from it; 0.0.19 on 2026-10-09); the docs and dev sites (`^0.0.7`).
 
-**Review date:**; 0.0.11 re-verified 2026-10-30 (Point documentation links at the machine zone (ADR-0005))
+**Review date:**; 0.0.11 released 2026-10-30 (Point documentation links at the machine zone (ADR-0005)); frontend-wave delta review 2026-11-01 (real review of the 2026-10-19 → 2026-11-01 changes; see the delta section)
 
 - 2026-09-18 — first pass.
 - 2026-09-28 — relocated.
@@ -197,6 +197,8 @@ The remaining work is maintainer or mainnet work:
 - mainnet committee terms (`OPERATOR_TASKS.md` "Mainnet Seal key servers") and the external review.
 
 ---
+
+**2026-11-01 update.** The 0.0.11 release (2026-10-30) changed versions, generated comments and the lockfile only; this review re-ran every gate and found nothing to fix (F38, Positive).
 
 ## Threat model / trust boundaries
 
@@ -1028,6 +1030,18 @@ clean). Real-chain proof: the 2026-10-22 rehearsal ran `upgrade.sh` and `migrate
 
 ---
 
+### Frontend wave delta review (2026-11-01) — 0.0.11 reviewed
+
+Scope: the changes since the last substantive entry of this audit: 0.0.11 (2026-10-30: documentation links) after the identifier alignment `sealed_storage` (2026-10-24, logged: modules compile byte-identical). The release tool's "re-verified" mark for the 2026-10-30 release recorded no review; this section is the review. Read the diff of the release commits (version strings and generated comments only — no source or Move change in the wave) and re-ran this repository's gates. Ran: `sui move test` with Sui 1.81.0: 41 tests, 41 passed (including `wrong_version_blocks_seal_approve*` and the paused-policy ordering test); the 10-30 diff is the version string only.
+
+### F38 — Positive: the refreshed release passes its own gates, with nothing changed in the shipped logic
+**Severity:** Positive
+**Evidence:** all 41 Move tests pass; the `seal_approve*` policies are side-effect-free and version-gated as the SEAL lens requires, and the policy package identifiers the client generates from are the 0.0.11 record.
+
+### Delta notes
+- **A11Y lens:** Move package: not triggered.
+- **Supply chain:** published through the tag-gated trusted-publisher workflow with provenance (unchanged); Dependabot configuration present.
+
 ## Section A — Invariant verification matrix
 
 | # | Invariant | Enforced / asserted at | Proven by | Status |
@@ -1562,6 +1576,7 @@ TS requirements are n/a (no TypeScript).
   - **Fixed (F37):** `scripts/lib.sh` (`ALLOW_TOOLCHAIN_CHANGE=1`), `tests/scripts/ops_scripts_test.sh` (+3 checks, 24 total), `CUSTODY.md` (step 2 and the rehearsal paragraph). No Move change; no version bump (scripts do not ship; `CUSTODY.md` follows the docs-only precedent).
   - **Counts (37 findings, 4 Positive):** RESOLVED 25 (adds F37), ADJUDICATED 6, MITIGATED 0, ACCEPTED-RISK 2, DEFERRED 0. Section D: the live key-server box is ticked; the mainnet and operator boxes are unchanged.
   - **Not exercised:** a mainnet committee; Permissioned-mode servers; a retired version on the LIVE package (the live `PolicyConfig` is at version 1).
+- 2026-11-01 — frontend-wave delta review of 0.0.11: read the 10-30 release diff (no source change) and re-ran the gates (see the delta section); recorded F38 as Positive. The release tool's bare "re-verified" mark was reworded to "released". `**Template:**` dates reconciled to the 2026-11-01 registry with no disposition change.
 
 ## Pre-save consistency checklist (this pass)
 

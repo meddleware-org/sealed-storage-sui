@@ -31,3 +31,5 @@ Published.toml.*.bak
 # Unsigned upgrade / migrate transactions written by scripts/upgrade.sh and scripts/migrate.sh
 upgrade.*.tx.b64*
 migrate.*.tx.b64*
+.coverage_map.mvcov
+traces/

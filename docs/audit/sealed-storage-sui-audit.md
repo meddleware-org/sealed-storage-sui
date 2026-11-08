@@ -1297,7 +1297,7 @@ UI audits' concern (sealed-storage-ui).
 - [ ] mainnet committee verified, `verifyKeyServers` on, t = 2 of independent operators (B.SEAL-1;
   `OPERATOR_TASKS.md` "Mainnet Seal key servers"; owned by sealed-storage-ui/ADR-0002)
 - [ ] mainnet publication (`EXPECTED_SIGNER` and `MAINNET_CONFIRM` set) — mainnet-blocked
-- [ ] external review — after launch, per `OPERATOR_TASKS.md` "Funding, grants and an external audit"
+- [ ] external review (ADR-0009 gate G2: required before the UpgradeCap burn; FU-0018) — after launch, per `OPERATOR_TASKS.md` "Funding, grants and an external audit"
 
 ---
 

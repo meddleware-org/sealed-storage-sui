@@ -13,8 +13,12 @@
 # by the active address; anything else aborts before a transfer. DRY_RUN=1 by default; DRY_RUN=0
 # executes after a typed "YES". On testnet/mainnet the new owners are recorded in deployments.json.
 #
+# The recipient is re-derived from MULTISIG_PKS / MULTISIG_WEIGHTS / MULTISIG_THRESHOLD (the recorded keys) with
+# `sui keytool multi-sig-address`; a mismatch refuses before anything is sent.
+#
 # Usage:
-#   NETWORK=testnet MULTISIG_ADDRESS=0x<64hex> bash scripts/transfer-authority.sh [--include-upgrade-cap]
+#   MULTISIG_PKS="<pk1> <pk2>" MULTISIG_WEIGHTS="1 1" MULTISIG_THRESHOLD=2 \
+#     NETWORK=testnet MULTISIG_ADDRESS=0x<64hex> bash scripts/transfer-authority.sh [--include-upgrade-cap]
 #   DRY_RUN=0 NETWORK=testnet MULTISIG_ADDRESS=0x<64hex> bash scripts/transfer-authority.sh --include-upgrade-cap
 
 set -euo pipefail
@@ -96,6 +100,25 @@ elif [ "$NETWORK" = "mainnet" ]; then
   log "ERROR: mainnet requires EXPECTED_SIGNER."; exit 1
 fi
 
+# ── The recipient must be the multisig of the RECORDED keys, weights and threshold ────────────────────────────
+# An address that only looks right is not enough for an irreversible hand-over of admin capabilities: re-derive it
+# with the CLI from the keys that will sign and refuse on any mismatch (key-custody audit F4, FU-0083). Use the
+# exact values you recorded: scripts/multisig-address.sh prints the address for them.
+: "${MULTISIG_PKS:?set MULTISIG_PKS to the space-separated base64 public keys (with flag) of the multisig members}"
+: "${MULTISIG_WEIGHTS:?set MULTISIG_WEIGHTS to one weight per key, space-separated}"
+: "${MULTISIG_THRESHOLD:?set MULTISIG_THRESHOLD to the total weight needed to sign}"
+read -r -a MS_PKS <<<"$MULTISIG_PKS"
+read -r -a MS_WEIGHTS <<<"$MULTISIG_WEIGHTS"
+[[ "${#MS_PKS[@]}" -ge 1 && "${#MS_PKS[@]}" -eq "${#MS_WEIGHTS[@]}" ]] || { log "ERROR: ${#MS_PKS[@]} keys but ${#MS_WEIGHTS[@]} weights."; exit 1; }
+[[ "$MULTISIG_THRESHOLD" =~ ^[0-9]+$ ]] || { log "ERROR: MULTISIG_THRESHOLD must be a number."; exit 1; }
+MS_TOTAL=0; for w in "${MS_WEIGHTS[@]}"; do [[ "$w" =~ ^[0-9]+$ ]] || { log "ERROR: weight '$w' is not a number."; exit 1; }; MS_TOTAL=$((MS_TOTAL + w)); done
+[[ "$MULTISIG_THRESHOLD" -ge 1 && "$MULTISIG_THRESHOLD" -le "$MS_TOTAL" ]] || { log "ERROR: threshold $MULTISIG_THRESHOLD must be between 1 and the total weight $MS_TOTAL."; exit 1; }
+MS_DERIVED="$(sui keytool multi-sig-address --pks "${MS_PKS[@]}" --weights "${MS_WEIGHTS[@]}" --threshold "$MULTISIG_THRESHOLD" --json 2>/dev/null | jq -r '.multisigAddress // empty')"
+[[ -n "$MS_DERIVED" ]] || { log "ERROR: the CLI could not derive a multisig address from MULTISIG_PKS / MULTISIG_WEIGHTS / MULTISIG_THRESHOLD."; exit 1; }
+[[ "$(long_addr "$MS_DERIVED")" == "$(long_addr "$MULTISIG_ADDRESS")" ]] \
+  || { log "ERROR: MULTISIG_ADDRESS $MULTISIG_ADDRESS is not the multisig of the given keys, weights and threshold (that is $MS_DERIVED). Nothing was sent."; exit 1; }
+echo "OK    MULTISIG_ADDRESS is the ${MULTISIG_THRESHOLD}-of-weight-${MS_TOTAL} multisig of ${#MS_PKS[@]} recorded key(s)"
+
 # verify_object <id> <label> <exact type> [<package the object must control>]
 verify_object() {
   local id="$1" label="$2" want="$3" pkg="${4:-}" json typ owner
@@ -134,6 +157,11 @@ if [ "$DRY_RUN" != "0" ]; then
 fi
 read -r -p "Transfer these objects to $MULTISIG_ADDRESS on $NETWORK? Type YES to confirm: " CONFIRM
 [ "$CONFIRM" = "YES" ] || { log "Aborted."; exit 1; }
+if [ -n "$INCLUDE_UPGRADE_CAP" ]; then
+  # Moving upgrade authority is its own decision: the YES above does not cover it.
+  read -r -p "Also hand UpgradeCap ${UPGRADE_CAP_ID} to the multisig? Type UPGRADECAP to confirm: " CONFIRM_CAP
+  [ "$CONFIRM_CAP" = "UPGRADECAP" ] || { log "Aborted (nothing sent)."; exit 1; }
+fi
 
 for i in "${!IDS[@]}"; do
   if ! OUT="$(sui client transfer --object-id "${IDS[$i]}" --to "$MULTISIG_ADDRESS" --gas-budget "$GAS_BUDGET" --json 2>&1)"; then

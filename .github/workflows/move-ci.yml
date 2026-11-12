@@ -61,4 +61,6 @@ jobs:
 
       # Offline tests of lib.sh / upgrade.sh / migrate.sh against a stub `sui` (jq is preinstalled on the runners).
       - name: Ops script tests
-        run: bash tests/scripts/ops_scripts_test.sh
+        run: |
+          bash tests/scripts/ops_scripts_test.sh
+          bash tests/scripts/transfer_test.sh

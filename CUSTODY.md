@@ -24,7 +24,7 @@ publishing and is burned at the end of the verification window.
    deploy key) in `deployments.json`. `access_gate` must already be published at the commit
    `Move.toml` pins.
 2. **Transfer** to the multisig:
-   `DRY_RUN=0 NETWORK=<network> MULTISIG_ADDRESS=0x… bash scripts/transfer-authority.sh --include-upgrade-cap`.
+   `MULTISIG_PKS="<pks>" MULTISIG_WEIGHTS="<weights>" MULTISIG_THRESHOLD=<n> DRY_RUN=0 NETWORK=<network> MULTISIG_ADDRESS=0x… bash scripts/transfer-authority.sh --include-upgrade-cap` (the script re-derives the address from the recorded keys, weights and threshold and refuses on a mismatch; the UpgradeCap needs its own typed `UPGRADECAP`).
    Each object is re-read on-chain (exact type, this package, owned by the deploy key) before it is
    sent; `deployments.json` then records the multisig.
 3. **Set the burn date.** Write `custody.plannedBurnDate` (`YYYY-MM-DD`) in `deployments.json` and

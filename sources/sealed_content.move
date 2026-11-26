@@ -94,8 +94,13 @@ entry fun publish(
 }
 
 // ── Views ────────────────────────────────────────────────────────────────────────
+/// The gate whose valid pass-holders may decrypt this content.
 public fun gate_id(c: &SealedContent): ID { c.gate_id }
+/// The Walrus blob id of the ciphertext.
 public fun blob_id(c: &SealedContent): String { c.blob_id }
+/// The Seal identity (hex) the content was encrypted under.
 public fun seal_id(c: &SealedContent): String { c.seal_id }
+/// The human-readable label shown in unlock UIs.
 public fun label(c: &SealedContent): String { c.label }
+/// Who published this pointer (informational; anyone may publish under any gate id).
 public fun publisher(c: &SealedContent): address { c.publisher }

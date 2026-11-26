@@ -35,6 +35,7 @@ PACKAGE_LABEL="sealed_storage"
 OUT_DIR="${OUT_DIR:-$REPO_ROOT/custody-out}"
 UPGRADE_CAP_TYPE="0x0000000000000000000000000000000000000000000000000000000000000002::package::UpgradeCap"
 
+# log <message...>: a line on stderr (stdout stays free for the CLI's own output).
 log() { printf '%s\n' "$*" >&2; }
 
 # Read one key from the [published.<network>] section of Published.toml.
@@ -66,6 +67,7 @@ record_burn() {
   log "Recorded the burn in $deployments — commit it."
 }
 
+# long_addr <0x...>: the address lower-cased and zero-padded to 64 hex digits, so two spellings of one address compare equal.
 long_addr() { local h="${1#0x}"; printf '0x%064s' "${h,,}" | tr ' ' 0; }
 
 # Hard failures before anything is signed: the active env must be NETWORK, testnet/mainnet must report

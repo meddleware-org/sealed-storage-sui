@@ -56,6 +56,32 @@ mirrors one client provider 1:1.
 
 The full module/identity/roadmap tables live in [README.md](README.md) — keep the two in sync.
 
+## Commands
+
+```bash
+sui move build --build-env testnet --lint --warnings-are-errors   # what CI builds
+sui move test --build-env testnet --coverage && sui move coverage summary   # 41 tests; every module must report 100 %
+bash tests/scripts/ops_scripts_test.sh && bash tests/scripts/transfer_test.sh   # the script tests
+```
+
+Release: bump `package.json`, push, tag `v<version>`; `npm-publish.yml` re-runs the Move CI on the tagged commit and publishes `Published.toml`, `deployments.json`, the sources and the docs with npm trusted publishing.
+Commit messages: one short line, no body, no trailer.
+
+## Gotchas
+
+- **Three version numbers.** `package.json` (the npm release, currently 0.0.12), `Move.toml` (`version = "0.0.8"`, the Move package) and the on-chain `VERSION` constant in `sources/config.move` (1) are separate; only `VERSION` gates anything.
+- **The first build needs the network**: `access_gate` is a git dependency pinned to a commit in `Move.toml`, and `Move.lock` pins the same commit. Change the rev only together with the address it resolves to.
+- **Localnet publishes with `test-publish --publish-unpublished-deps`**, which also publishes `access_gate` there; its record is the ignored `Pub.localnet.toml` and `.env.localnet`, never the committed `Published.toml`.
+- **Comments are free; code is not.** A documentation pass must leave the compiled bytecode identical: after a build and a test run, compare the hashes of `build/sealed_storage/bytecode_modules/*.mv` (test modules included) before and after.
+- **`build/`, `traces/`, `Pub.*.toml` and `Published.toml.*.bak` are local files** (ignored); `Published.toml` itself is committed and written by Sui.
+- **The scripts never switch the active Sui env.** They refuse unless it already is the target network, and mainnet needs `MAINNET_CONFIRM=1` and `EXPECTED_SIGNER`.
+- **There is no `mw-audit-gate`**: the package has no npm dependencies; CI is the Move CI.
+
+## Related
+
+- The audit: [`docs/audit/sealed-storage-sui-audit.md`](docs/audit/sealed-storage-sui-audit.md); custody lifecycle: [`CUSTODY.md`](CUSTODY.md); how to propose a change: [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- Consumers: `sealed-storage-client` (mirrors the identity layouts and limits; generates its `deployments` from `Published.toml` and `deployments.json`), and the `docs-site` and `dev-site` (which read `docs/onchain/`). Its dependency: `access-gate-sui`.
+
 ## What NOT to do
 
 - Do not add side effects to any `seal_approve*` (it is dry-run only).

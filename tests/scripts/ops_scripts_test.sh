@@ -2,26 +2,36 @@
 # Offline tests for scripts/lib.sh, scripts/upgrade.sh and scripts/migrate.sh. A stub `sui` on PATH answers from
 # canned JSON, so no network or chain is needed (the real-chain rehearsal is in CUSTODY.md, "Rehearsal").
 # Run: bash tests/scripts/ops_scripts_test.sh
+# No `-e`: a failing command is a test result to count, not a reason to stop; `-u` and `pipefail` still catch typos and broken pipes.
 set -uo pipefail
 
+# This file's directory and the repository root, so the tests run from any working directory.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC="$(cd "$HERE/../.." && pwd)"
+# A scratch directory for the stub CLI and the copied scripts; removed on exit (the `:?` stops an empty variable turning the cleanup into `rm -rf /`).
 WORK="$(mktemp -d)"
 trap 'rm -rf "${WORK:?}"' EXIT
+# The scripts under test parse the CLI's JSON with jq, so the tests need it too.
 command -v jq >/dev/null || { echo "jq is required"; exit 1; }
 
+# The number of failed checks; the script exits 1 at the end if it is not 0.
 FAILS=0
+# ok <name>: report a passed check.
 ok()   { printf 'ok    %s\n' "$1"; }
+# fail <message>: report a failed check and count it.
 fail() { printf 'FAIL  %s\n' "$1"; FAILS=$((FAILS + 1)); }
+# eq <name> <got> <want>: check that two strings are equal.
 eq() { # eq <name> <got> <want>
   if [ "$2" = "$3" ]; then ok "$1"; else fail "$1: got '$2', wanted '$3'"; fi
 }
+# expect <name> <expected-exit> <output-substring> -- <command...>: run the command and require both its exit code and a substring of its combined output.
 expect() { # expect <name> <expected-exit> <stderr-substring> -- cmd...
   local name="$1" want="$2" needle="$3" out rc; shift 4
   out="$("$@" 2>&1)"; rc=$?
   if [ "$rc" = "$want" ] && [[ "$out" == *"$needle"* ]]; then ok "$name"; else fail "$name (exit $rc, wanted $want, needle '$needle'): $out"; fi
 }
 
+# Fixed ids made of one repeated digit: MS the multisig that owns the cap, PKG1 and PKG2 two package versions, CFG the PolicyConfig, ADMIN the PolicyAdminCap, CAP the UpgradeCap.
 MS=0x$(printf 'a%.0s' {1..64})
 PKG1=0x$(printf '1%.0s' {1..64}); PKG2=0x$(printf '2%.0s' {1..64})
 CFG=0x$(printf 'c%.0s' {1..64}); ADMIN=0x$(printf 'd%.0s' {1..64}); CAP=0x$(printf 'e%.0s' {1..64})
@@ -74,6 +84,7 @@ STUB
   chmod +x "$1/bin/sui"
 }
 
+# run <repo> <script> [args]: a script from the scratch checkout against localnet, with the stub's answers steered by the STUB_* variables.
 run() { # run <repo> <script> [args] with the stub environment
   local d="$1" script="$2"; shift 2
   env PATH="$d/bin:$PATH" NETWORK=localnet MULTISIG_ADDRESS="${RUN_MS-$MS}" PUB_FILE="$d/Pub.localnet.toml" \
@@ -99,6 +110,7 @@ eq "published_field(testnet) reads Published.toml" "$got" "$PKG1"
 got="$(bash -c "source '$R1/scripts/lib.sh'; source_version")"
 eq "source_version" "$got" "2"
 
+# `migrate.sh --verify` passes only when the on-chain version equals VERSION and the recorded package is the latest (a burned cap is a note, not a failure).
 # ── migrate.sh --verify ──────────────────────────────────────────────────────────────────────────────
 export STUB_CAP_PACKAGE="$PKG2" STUB_CHAIN_VERSION=2
 expect "verify: migrated, recorded package is the latest" 0 "is at version 2 = VERSION" -- run "$R1" migrate.sh --verify
@@ -106,11 +118,13 @@ STUB_CHAIN_VERSION=1 expect "verify: refuses before migrate executed" 1 "migrate
 STUB_CAP_PACKAGE="$PKG1" expect "verify: refuses a stale published-at (cap names another package)" 1 "is not the latest version" -- run "$R1" migrate.sh --verify
 STUB_CAP_PACKAGE="" expect "verify: a burned cap is a note, not a failure" 0 "was not found (burned?)" -- run "$R1" migrate.sh --verify
 
+# The CLI's major.minor must match the record unless ALLOW_TOOLCHAIN_CHANGE=1; a patch difference is fine.
 # ── preflight: the recorded toolchain ────────────────────────────────────────────────────────────────
 STUB_VERSION=1.82.2-stub expect "preflight: another major.minor CLI is refused" 1 "does not match Published.toml toolchain-version 1.81.0" -- run "$R1" migrate.sh --verify
 STUB_VERSION=1.82.2-stub ALLOW_TOOLCHAIN_CHANGE=1 expect "preflight: ALLOW_TOOLCHAIN_CHANGE=1 admits it with a warning" 0 "instead of the recorded 1.81.0" -- run "$R1" migrate.sh --verify
 STUB_VERSION=1.81.7-stub expect "preflight: a patch difference is fine" 0 "is at version 2 = VERSION" -- run "$R1" migrate.sh --verify
 
+# Preparing the migration writes an unsigned transaction only after a dry run succeeds, and refuses when there is nothing to migrate or the record is stale.
 # ── migrate.sh (prepare) ─────────────────────────────────────────────────────────────────────────────
 STUB_CHAIN_VERSION=1 expect "prepare: writes the unsigned transaction" 0 "migrate 1 -> 2" -- run "$R1" migrate.sh
 eq "prepare: file holds the last output line" "$(cat "$R1/migrate.localnet.tx.b64" 2>/dev/null)" "AAABBBCCC+/="
@@ -127,6 +141,7 @@ STUB_CHAIN_VERSION=2 expect "upgrade: VERSION must exceed the on-chain version" 
 STUB_CHAIN_VERSION=1 STUB_CAP_PACKAGE="$PKG1" expect "upgrade: cap owned by the multisig, build is attempted" 1 "building the upgrade failed" -- run "$R1" upgrade.sh
 STUB_CHAIN_VERSION=1 expect "upgrade: failure shows the CLI's stdout diagnostics" 1 "stub sui: unexpected" -- run "$R1" upgrade.sh
 
+# Summary and exit code.
 echo
 if [ "$FAILS" -ne 0 ]; then echo "$FAILS failure(s)"; exit 1; fi
 echo "all passed"

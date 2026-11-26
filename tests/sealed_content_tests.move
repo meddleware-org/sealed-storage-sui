@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: 0BSD
 
+// Unit tests for `sealed_storage::sealed_content` (public pointers from a gate to a Seal-encrypted Walrus blob): what `publish` stores and emits, that it is
+// permissionless (an audited property), the length limits and the version gate. Run with `sui move test --build-env testnet`.
 #[test_only]
+/// Unit tests of the sealed-content pointer.
 module sealed_storage::sealed_content_tests;
 
 use sealed_storage::config;
@@ -8,10 +11,12 @@ use std::string::String;
 use sealed_storage::sealed_content::{Self, SealedContent};
 use sui::test_scenario as ts;
 
+/// The account that publishes a pointer in most tests.
 const PUBLISHER: address = @0xC0;
+/// A second account, standing for any stranger who publishes under a gate it does not administer.
 const OTHER: address = @0xD0;
 
-// Publish with a fresh current-version PolicyConfig (the version gate is tested in config_tests).
+/// Publish with a fresh current-version PolicyConfig (the version gate is tested in config_tests).
 fun publish_t(s: &mut ts::Scenario, gate_id: ID, blob_id: String, seal_id: String, label: String) {
     let policy = config::new_for_testing(s.ctx());
     sealed_content::publish(&policy, gate_id, blob_id, seal_id, label, s.ctx());
@@ -19,6 +24,7 @@ fun publish_t(s: &mut ts::Scenario, gate_id: ID, blob_id: String, seal_id: Strin
 }
 
 #[test]
+/// `publish` shares one `SealedContent` with the given fields and emits one `SealedContentPublished`.
 fun publish_shares_pointer_and_emits_event() {
     let mut s = ts::begin(PUBLISHER);
     let gate_id = object::id_from_address(@0x123);
@@ -44,6 +50,7 @@ fun publish_shares_pointer_and_emits_event() {
 }
 
 #[test]
+/// Documents the audited property (B.4): any sender may publish a pointer under any gate id; the gate is not checked to exist and the sender need not administer it.
 fun publish_is_permissionless_and_unvalidated() {
     // Documents the audited property (B.4): ANY sender may publish a pointer under ANY gate id —
     // the gate id is not checked to exist and the sender need not administer it. Discovery UIs
@@ -73,6 +80,7 @@ fun repeat(b: u8, n: u64): std::string::String {
 }
 
 #[test]
+/// A blob id of 128 bytes, a seal id of 256 and a label of 256 are accepted.
 fun accepts_fields_at_their_limits() {
     let mut s = ts::begin(PUBLISHER);
     publish_t(
@@ -90,6 +98,7 @@ fun accepts_fields_at_their_limits() {
 }
 
 #[test, expected_failure(abort_code = sealed_content::E_LABEL_TOO_LONG)]
+/// A 257-byte label aborts with `E_LABEL_TOO_LONG`.
 fun rejects_a_label_over_the_limit() {
     let mut s = ts::begin(PUBLISHER);
     publish_t(&mut s, object::id_from_address(@0x123), b"b".to_string(), b"s".to_string(), repeat(0x6c, 257));
@@ -97,6 +106,7 @@ fun rejects_a_label_over_the_limit() {
 }
 
 #[test, expected_failure(abort_code = sealed_content::E_BLOB_ID_TOO_LONG)]
+/// A 129-byte blob id aborts with `E_BLOB_ID_TOO_LONG`.
 fun rejects_a_blob_id_over_the_limit() {
     let mut s = ts::begin(PUBLISHER);
     publish_t(&mut s, object::id_from_address(@0x123), repeat(0x62, 129), b"s".to_string(), b"l".to_string());
@@ -104,6 +114,7 @@ fun rejects_a_blob_id_over_the_limit() {
 }
 
 #[test, expected_failure(abort_code = sealed_content::E_SEAL_ID_TOO_LONG)]
+/// A 257-byte seal id aborts with `E_SEAL_ID_TOO_LONG`.
 fun rejects_a_seal_id_over_the_limit() {
     let mut s = ts::begin(PUBLISHER);
     publish_t(&mut s, object::id_from_address(@0x123), b"b".to_string(), repeat(0x73, 257), b"l".to_string());
@@ -112,6 +123,7 @@ fun rejects_a_seal_id_over_the_limit() {
 
 #[test]
 #[expected_failure(abort_code = 1, location = sealed_storage::config)] // E_WRONG_VERSION
+/// With the `PolicyConfig` at another version, `publish` aborts with `config::E_WRONG_VERSION` (1).
 fun wrong_version_blocks_publish() {
     let mut s = ts::begin(PUBLISHER);
     let mut policy = config::new_for_testing(s.ctx());

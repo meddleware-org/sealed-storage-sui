@@ -1,15 +1,21 @@
 // SPDX-License-Identifier: 0BSD
 
+// Unit tests for `sealed_storage::config` (the package-wide version gate): `init` and `migrate` with its two refusals. Run with `sui move test --build-env testnet`.
+// The version gate's effect on each policy is tested in that policy's own test file.
+//
 // Abort codes by literal (see config.move): E_WRONG_VERSION = 1, E_NOT_UPGRADE = 2.
 #[test_only]
+/// Unit tests of the version gate: `init` and `migrate`.
 module sealed_storage::config_tests;
 
 use sealed_storage::config::{Self, PolicyConfig, PolicyAdminCap};
 use sui::test_scenario as ts;
 
+/// The publisher and `PolicyAdminCap` holder in every scenario.
 const ADMIN: address = @0xA1;
 
 #[test]
+/// `init` shares a `PolicyConfig` at the current version (1) and gives the publisher the `PolicyAdminCap`.
 fun init_shares_current_version_and_gives_cap_to_sender() {
     let mut s = ts::begin(ADMIN);
     config::init_for_testing(s.ctx());
@@ -24,6 +30,7 @@ fun init_shares_current_version_and_gives_cap_to_sender() {
 }
 
 #[test]
+/// `migrate` moves a config left at version 0 to the current version and emits one `PolicyConfigMigratedEvent`.
 fun migrate_moves_an_older_config_forward() {
     let mut s = ts::begin(ADMIN);
     config::init_for_testing(s.ctx());
@@ -42,6 +49,7 @@ fun migrate_moves_an_older_config_forward() {
 
 #[test]
 #[expected_failure(abort_code = 2, location = sealed_storage::config)] // E_NOT_UPGRADE
+/// `migrate` on a config already at this version aborts with `E_NOT_UPGRADE` (2).
 fun migrate_at_current_version_aborts() {
     let mut s = ts::begin(ADMIN);
     config::init_for_testing(s.ctx());
@@ -56,6 +64,7 @@ fun migrate_at_current_version_aborts() {
 
 #[test]
 #[expected_failure(abort_code = 2, location = sealed_storage::config)] // E_NOT_UPGRADE
+/// `migrate` on a config already past this version aborts with `E_NOT_UPGRADE` (2).
 fun migrate_never_moves_backwards() {
     let mut s = ts::begin(ADMIN);
     config::init_for_testing(s.ctx());

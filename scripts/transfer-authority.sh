@@ -31,6 +31,7 @@ PUBLISHED_TOML="$REPO_ROOT/Published.toml"
 ENV_FILE="$REPO_ROOT/.env.${NETWORK}"
 FW="0x0000000000000000000000000000000000000000000000000000000000000002"
 
+# log <message...>: a line on stderr (errors and refusals; progress goes to stdout).
 log() { printf '%s\n' "$*" >&2; }
 
 INCLUDE_UPGRADE_CAP=""
@@ -43,6 +44,7 @@ done
 MULTISIG_ADDRESS="${MULTISIG_ADDRESS:-}"
 [[ "$MULTISIG_ADDRESS" =~ ^0x[0-9a-fA-F]{64}$ ]] || { log "ERROR: MULTISIG_ADDRESS must be set to a 0x-prefixed 64-hex address."; exit 1; }
 
+# published_field <key>: one value from the [published.<network>] section of Published.toml (empty if there is none).
 published_field() {
   awk -v section="[published.${NETWORK}]" -v key="$1" '
     $0 == section { in_section = 1; next }
@@ -52,7 +54,9 @@ published_field() {
     }
   ' "$PUBLISHED_TOML" 2>/dev/null || true
 }
+# record <VAR>: the value of VAR in the git-ignored .env.<network> that publish.sh wrote (empty if the file or the variable is missing).
 record() { if [ -f "$ENV_FILE" ]; then sed -n "s/^$1=//p" "$ENV_FILE"; fi; }
+# long_addr <0x...>: the address lower-cased and zero-padded to 64 hex digits, so two spellings of one address compare equal.
 long_addr() { local h="${1#0x}"; printf '0x%064s' "${h,,}" | tr ' ' 0; }
 
 # Same preflight as publish.sh / make-immutable.sh.

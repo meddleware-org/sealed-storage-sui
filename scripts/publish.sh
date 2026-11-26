@@ -39,6 +39,7 @@
 # -----------------------------------------------------------------------------
 set -euo pipefail
 
+# log <message...>: a UTC-timestamped line on stderr, so stdout stays free for machine-readable output.
 log() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" >&2; }
 trap 'log "ERROR: publish.sh failed at line $LINENO (exit $?)."' ERR
 
@@ -90,6 +91,7 @@ if [ "$NETWORK" = "mainnet" ] && [ "${MAINNET_CONFIRM:-}" != "1" ]; then
   exit 78
 fi
 DEPLOYER=$(sui client active-address)
+# norm_addr <0x...>: the address lower-cased and zero-padded to 64 hex digits, so two spellings of one address compare equal.
 norm_addr() { local h="${1#0x}"; printf '0x%064s' "${h,,}" | tr ' ' 0; }
 if [ -n "${EXPECTED_SIGNER:-}" ]; then
   [[ "$EXPECTED_SIGNER" =~ ^0x[0-9a-fA-F]{1,64}$ ]] || { log "ERROR: EXPECTED_SIGNER must be a 0x-prefixed address."; exit 1; }
@@ -111,6 +113,7 @@ if [ "$NETWORK" != "localnet" ]; then
   [ -n "$AG_REV" ] || { log "ERROR: Move.toml does not pin access_gate to a 40-hex commit (a local or branch dependency cannot be published)."; exit 1; }
   AG_TOML=$(curl -fsSL --max-time 20 "https://raw.githubusercontent.com/meddleware-org/access-gate-sui/${AG_REV}/Published.toml") \
     || { log "ERROR: could not read access-gate-sui Published.toml at ${AG_REV}."; exit 1; }
+  # ag_field <key>: one value from access-gate-sui's Published.toml for this network, read from the text fetched above.
   ag_field() { awk -v s="[published.${NETWORK}]" -v k="$1" '$0==s{f=1;next} /^\[/{f=0} f && $0 ~ "^[[:space:]]*" k "[[:space:]]*="{gsub(/.*= *"|".*/,"");print;exit}' <<<"$AG_TOML"; }
   AG_ORIGINAL=$(ag_field original-id); AG_PUBLISHED=$(ag_field published-at)
   [[ -n "$AG_ORIGINAL" && -n "$AG_PUBLISHED" ]] || { log "ERROR: access-gate-sui ${AG_REV} records no ${NETWORK} publication."; exit 1; }
@@ -153,6 +156,7 @@ jq -e '.objectChanges' >/dev/null 2>&1 <<<"$JSON" || { log "ERROR: publish outpu
 
 PACKAGE_ID=$(jq -r '[.objectChanges[] | select(.type=="published") | .packageId] | if length==1 then .[0] else "" end' <<<"$JSON")
 [ -n "$PACKAGE_ID" ] || { log "ERROR: could not find exactly one published package"; exit 1; }
+# created_id <exact objectType>: the id of the single created object of that type in the publish output (empty if there is not exactly one).
 created_id() {
   jq -r --arg t "$1" '[.objectChanges[] | select(.type=="created" and .objectType==$t) | .objectId] | if length==1 then .[0] else "" end' <<<"$JSON"
 }

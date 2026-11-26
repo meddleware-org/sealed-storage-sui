@@ -84,6 +84,7 @@ fun assert_not_paused_if_required(gate: &Gate) {
     );
 }
 
+/// A single-use pass with no uses left cannot authorise (`E_EXHAUSTED`); an unlimited pass (`none`) always passes. Reading the count does not spend a use.
 fun assert_has_uses(remaining: Option<u64>) {
     if (remaining.is_some()) {
         assert!(*remaining.borrow() > 0, E_EXHAUSTED);

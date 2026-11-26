@@ -3,13 +3,16 @@
 # publish.sh / transfer-authority.sh / make-immutable.sh: active env, chain identifier, CLI version,
 # MAINNET_CONFIRM on mainnet, and an optional EXPECTED_SIGNER (required on mainnet).
 
+# log <message...>: a line on stderr (stdout stays free for machine-readable output).
 log() { printf '%s\n' "$*" >&2; }
 
+# The repository root (the parent of scripts/), whatever directory the script is run from, and the committed records under it.
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PUBLISHED_TOML="$REPO_ROOT/Published.toml"
 # shellcheck disable=SC2034  # used by the scripts that source this file
 DEPLOYMENTS="$REPO_ROOT/deployments.json"
 
+# long_addr <0x...>: the address lower-cased and zero-padded to 64 hex digits, so two spellings of one address compare equal.
 long_addr() { local h="${1#0x}"; printf '0x%064s' "${h,,}" | tr ' ' 0; }
 
 # Localnet is an ephemeral network: `publish.sh localnet` uses `test-publish`, which records the publication
@@ -17,6 +20,8 @@ long_addr() { local h="${1#0x}"; printf '0x%064s' "${h,,}" | tr ' ' 0; }
 # never in the committed Published.toml / deployments.json. testnet/mainnet keep using those two files.
 PUB_FILE="${PUB_FILE:-$REPO_ROOT/Pub.localnet.toml}"
 
+# published_field <key>: one value (published-at, original-id, upgrade-capability, toolchain-version) from the record of the current NETWORK: the [published.<network>]
+# section of Published.toml, or on localnet this checkout's block of the git-ignored Pub.localnet.toml. Prints nothing if there is none.
 published_field() {
   if [ "${NETWORK:-}" = "localnet" ]; then
     # [[published]] entries; ours is the one whose `source = { local = "<this checkout>" }`.
@@ -81,6 +86,8 @@ require_latest_package() {
   }
 }
 
+# preflight: hard failures before anything is signed (jq present; the active env is NETWORK; testnet/mainnet report their chain identifier; the CLI major.minor matches
+# the recorded toolchain unless ALLOW_TOOLCHAIN_CHANGE=1; mainnet needs MAINNET_CONFIRM=1, otherwise the run is skipped with exit 78).
 preflight() {
   local env chain want tool cli
   command -v jq >/dev/null || { log "ERROR: jq is required"; exit 1; }

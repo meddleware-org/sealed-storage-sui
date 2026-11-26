@@ -5,22 +5,27 @@ name: Publish (npm)
 # of the custody scripts) on the exact tagged commit, so a broken tag never ships.
 # Authentication uses npm OIDC trusted publishing — no long-lived NPM_TOKEN.
 
+# Only a pushed tag that starts with `v` (the release process tags `v<version>`).
 on:
   push:
     tags:
       - 'v*'
 
+# Read-only by default; the publish job below adds the one extra permission it needs.
 permissions:
   contents: read
 
+# No tool may phone home from CI (the fleet's privacy rule).
 env:
   DO_NOT_TRACK: "1"
 
 jobs:
+  # The Move CI workflow, reused on the tagged commit: publishing waits for it (`needs: verify`).
   verify:
     name: Verify (CI checks)
     uses: ./.github/workflows/move-ci.yml
 
+  # The one job that publishes: it checks the tag against the package version first.
   publish-npm:
     name: npmjs (@meddleware/sealed-storage-sui)
     needs: verify
@@ -29,6 +34,7 @@ jobs:
       contents: read
       id-token: write  # required for OIDC trusted publishing
     steps:
+      # Actions are pinned by full commit SHA with the version in a comment (D12).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -37,8 +43,10 @@ jobs:
       # Trusted publishing (OIDC) requires npm >= 11.5.1; Node 24 ships an older npm.
       - name: Upgrade npm for trusted publishing
         run: npm install -g npm@11.20.0
+      # `npm ci` installs exactly the lockfile (the package has no dependencies, so this mainly proves the lockfile is consistent).
       - name: Install dependencies
         run: npm ci
+      # A tag `v0.0.15` must be a package.json at `0.0.15`: otherwise the wrong version would be published under that tag.
       - name: Tag matches the package version
         env:
           TAG: ${{ github.ref_name }}
@@ -49,6 +57,7 @@ jobs:
             exit 1
           fi
 
+      # Idempotent, so a re-run of the job after the version is on npm leaves it green. `--provenance` signs the build's origin into the registry (Sigstore).
       - name: Publish to npmjs (OIDC, idempotent)
         run: |
           VERSION=$(node -p "require('./package.json').version")

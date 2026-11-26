@@ -1,3 +1,5 @@
+# Move CI: the Move build with lints as errors, the Move tests with a 100 % coverage gate, and the shellcheck and offline tests of the custody and upgrade scripts. It runs on
+# every push to main and every pull request, and the release workflow (npm-publish.yml) calls it on the tagged commit, so a broken tag never ships.
 name: Move CI
 
 on:
@@ -8,20 +10,25 @@ on:
   # The release workflow runs the same checks on the tagged commit.
   workflow_call:
 
+# Read-only: CI needs nothing but the checkout.
 permissions:
   contents: read
 
+# No tool may phone home from CI (the fleet's privacy rule).
 env:
   DO_NOT_TRACK: "1"
 
 jobs:
+  # Build and test the Move package with the pinned Sui CLI.
   test:
     name: Move tests
     runs-on: ubuntu-latest
 
     steps:
+      # Actions are pinned by full commit SHA with the version in a comment (D12).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # suiup is the Sui toolchain installer. Its release archive is verified against a pinned SHA-256 before it is unpacked.
       - name: Install suiup
         run: |
           curl -fsSLo /tmp/suiup.tgz "https://github.com/MystenLabs/suiup/releases/download/v0.0.14/suiup-Linux-musl-x86_64.tar.gz"
@@ -29,20 +36,24 @@ jobs:
           mkdir -p "$HOME/.local/bin" && tar -xzf /tmp/suiup.tgz -C "$HOME/.local/bin" suiup
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
+      # The exact CLI version, so the build and the tests do not move under the package.
       - name: Install Sui CLI (testnet channel)
         run: |
           suiup install sui@testnet-v1.81.0
           suiup switch sui@testnet-v1.81.0
 
+      # Fails if the installed binary is not the one whose checksum is pinned here.
       - name: Verify Sui version and binary checksum
         run: |
           sui --version
           # The release asset suiup downloads is not checksum-verified by suiup itself: pin the binary.
           echo "c86c0481a44174dfa17af89e71292d6fba5df267c66722ae6797e8793a22f7f1  $(command -v sui)" | sha256sum -c -
 
+      # The Move linter is on and any warning fails the build.
       - name: Build (lints on, warnings are errors)
         run: sui move build --build-env testnet --lint --warnings-are-errors
 
+      # The tests run with coverage, and the job fails if any module's coverage is below 100 %.
       - name: Test with coverage (every module at 100%)
         run: |
           sui move test --build-env testnet --coverage
@@ -50,6 +61,7 @@ jobs:
           grep -q "% Module coverage:" "$RUNNER_TEMP/coverage.txt"
           awk '/% Module coverage:/ { if ($NF + 0 < 100) bad = 1 } END { exit bad }' "$RUNNER_TEMP/coverage.txt"
 
+  # The custody, publish, upgrade and migrate scripts are the highest-stakes shell in the project, so they are linted and their offline tests run on every push.
   shellcheck:
     name: shellcheck (ops scripts)
     runs-on: ubuntu-latest

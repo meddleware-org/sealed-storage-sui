@@ -1,3 +1,5 @@
+# Files this repository never tracks: build output, the Sui client's keys and config, local deployment records, unsigned custody, upgrade and migrate transactions and editor files.
+
 # Sui build artefacts
 build/
 
@@ -27,9 +29,11 @@ node_modules/
 .env.*.bak
 # Unsigned custody transactions written by scripts/make-immutable.sh
 custody-out/
+# Backups of Published.toml that publish.sh --replace-published makes.
 Published.toml.*.bak
 # Unsigned upgrade / migrate transactions written by scripts/upgrade.sh and scripts/migrate.sh
 upgrade.*.tx.b64*
 migrate.*.tx.b64*
+# The coverage map `sui move test --coverage` writes, and the test tracer's output.
 .coverage_map.mvcov
 traces/

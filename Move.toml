@@ -1,7 +1,13 @@
+# The Move package manifest for sealed_storage: Seal access policies (`nft_gate`, `timelock`), the sealed-content pointers and the package-wide version gate.
+# Build and test with `sui move build --build-env testnet` and `sui move test --build-env testnet` (the CI commands are in .github/workflows/move-ci.yml).
 [package]
+# The Move language edition: 2024 (method calls, `public struct`, `entry fun` and the `do!` macros the code and tests use).
 edition = "2024"
+# The package name; the modules are `sealed_storage::config`, `nft_gate`, `timelock` and `sealed_content`, and the address is assigned when the package is published.
 name = "sealed_storage"
+# The Move package version (not the npm version in package.json, which is released separately).
 version = "0.0.8"
+# The licence, as everywhere in this project.
 license = "0BSD"
 # No `published-at`: the testnet publication (version-gated, linking access_gate 0xd7ddaa94…88c9) is
 # recorded in Published.toml (Sui >= 1.80). Superseded: 0x61c4aa… (linked access_gate 0xa55789…),

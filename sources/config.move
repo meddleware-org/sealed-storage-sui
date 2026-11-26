@@ -37,6 +37,7 @@ public struct PolicyConfigMigratedEvent has copy, drop {
     to_version: u64,
 }
 
+/// Called once on publish: shares the `PolicyConfig` at this package version and gives the `PolicyAdminCap` to the publisher.
 fun init(ctx: &mut TxContext) {
     transfer::share_object(PolicyConfig { id: object::new(ctx), version: VERSION });
     transfer::public_transfer(PolicyAdminCap { id: object::new(ctx) }, ctx.sender());
@@ -56,24 +57,30 @@ public fun migrate(_cap: &PolicyAdminCap, config: &mut PolicyConfig) {
 }
 
 // ── Views ────────────────────────────────────────────────────────────────────────
+/// The package version the shared config currently names (the only one allowed to act).
 public fun version(config: &PolicyConfig): u64 { config.version }
+/// This package's `VERSION`.
 public fun package_version(): u64 { VERSION }
 
 // ── Test-only ────────────────────────────────────────────────────────────────────
 #[test_only]
+/// Run `init` in a test scenario, as publish does.
 public fun init_for_testing(ctx: &mut TxContext) { init(ctx) }
 
 #[test_only]
+/// A fresh, unshared `PolicyConfig` at the current version, for tests that call a policy directly (destroy it with `destroy_for_testing`).
 public fun new_for_testing(ctx: &mut TxContext): PolicyConfig {
     PolicyConfig { id: object::new(ctx), version: VERSION }
 }
 
 #[test_only]
+/// Force the config's version (simulates a config left at an older version, or migrated past this package).
 public fun set_version_for_testing(config: &mut PolicyConfig, version: u64) {
     config.version = version;
 }
 
 #[test_only]
+/// Delete a `PolicyConfig` made by `new_for_testing`.
 public fun destroy_for_testing(config: PolicyConfig) {
     let PolicyConfig { id, version: _ } = config;
     id.delete();

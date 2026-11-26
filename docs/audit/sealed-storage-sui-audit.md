@@ -25,10 +25,28 @@
   Sui CLI (`sui client ptb --move-call` in `migrate.sh`, `sui client upgrade` in `upgrade.sh`,
   `sui client transfer`, `0x2::package::make_immutable`) and to the ID trace. The repository has no
   SDK or TypeScript code.
+- **Added 2026-11-26 (Part B documentation pass):** AUDIT_TEMPLATE_DOCS.md (2026-11-20); AUDIT_TEMPLATE_RFC.md (2026-11-19), partial: BCS, the Seal identity layouts, JSON and TOML;
+  AUDIT_TEMPLATE_IOP.md (2026-11-19), partial: public API, versioning, the toolchain and key-server dependencies; AUDIT_TEMPLATE_PRIV.md (2026-11-20), partial: nothing is stored, addresses
+  on chain are public.
 - Not triggered: VUE, WALRUS, AUTH, PROXY, IMG, GO, RUST, WORKERS, SITE, PLATFORM. No lens registered
   for MCP or DB applies.
 
-**Package:** `seal_policies` v0.0.8 (released 2026-10-18; the on-chain package is unchanged — 0.0.8 changes only the ops
+**Front matter (DOCS, RFC, IOP and PRIV lenses, added 2026-11-26):**
+
+| Field | Value |
+| --- | --- |
+| Documentation status | ledger (workspace `docs/audit/DOCS_LEDGER.tsv`): 41 tracked files, 33 done (31 measured against the thresholds), 8 excluded (the lockfiles, `LICENSE` and the generated on-chain pages), 0 pending, 0 fu (2026-11-26 pass) |
+| Required documents | README, CHANGELOG, SECURITY, CONTRIBUTING (added 2026-11-26), LICENSE (0BSD), CLAUDE.md, AGENTS.md (added 2026-11-26), CUSTODY.md: all present |
+| Doc lints | `check-docs.mjs` (workspace) is the gate; the Move compiler has no missing-docs lint, so every `///` is checked there. A documentation pass must leave the compiled bytecode identical, tests included (CLAUDE.md, Gotchas) |
+| Standards spoken | BCS (the Move binary encoding) — `PolicyConfig`, the events and the `SealedContent` fields, read by the clients; the Seal identity layouts (`[32-byte gate id][nonce]`, `[8-byte big-endian unlock_ms][nonce]`) — Seal's own interface, pinned by conformance vectors shared with `sealed-storage-client`; JSON (RFC 8259) — `deployments.json`; TOML — `Move.toml` and `Published.toml` (written by Sui); semantic versioning — npm; SPDX `0BSD`, Sigstore / SLSA — as the other packages. Sui's multisig and `0x2::package` upgrade and `make_immutable` are Sui-specific, not standards |
+| Deviations | none |
+| Drafts relied on | none |
+| Data a person can take away | none held by the package. `SealedContent` pointers are public objects whose publisher owns nothing special; the custody scripts take no data |
+| Personal data | none held. `SealedContentPublished` and the `SealedContent` object carry the publisher's address and a free-text label, which are public chain data and cannot be erased; the legal register's question on wallet addresses (H4) applies |
+
+**Package:** *(Current, 2026-11-26: the package is now `sealed_storage`, renamed in ADR-0004; npm **`0.0.12` is `latest`** (tag `v0.0.12` = `3020a19`, the head of `main`: nothing has changed since the tag); the tarball is 18 files,
+61.6 kB unpacked, 21.5 kB packed (`npm pack --dry-run`). Consumers: `sealed-storage-client` pins `0.0.11` exactly, and `docs-site` and `dev-site` depend on `^0.0.11`. `Move.toml` is `0.0.8`, npm is a separate number.
+No open Dependabot pull request. The testnet package, its `PolicyConfig` and the custody state are as in the table below.)* `seal_policies` v0.0.8 (released 2026-10-18; the on-chain package is unchanged — 0.0.8 changes only the ops
 scripts, their tests and `CUSTODY.md`, F31, F34–F36); edition 2024.
 
 - Framework rev `83f11dc85d5695a57894329b005b78d75f9bb059` (`Move.lock`, testnet).
@@ -163,8 +181,8 @@ and released:
   `access_gate` `0xd7ddaa94…` (which forbids the pause-blocks-decryption plus freeze combination and
   fixes the pass kind), release 0.0.7. The old `0x61c4aa…` is immutable.
 
-**Findings by disposition (37 findings, 4 of them Positive):** RESOLVED 25, ADJUDICATED 6, MITIGATED 0,
-ACCEPTED-RISK 2, DEFERRED 0.
+**Findings by disposition (39 findings, 5 of them Positive, as of 2026-11-26):** RESOLVED 26 (adds F39), ADJUDICATED 6, MITIGATED 0,
+ACCEPTED-RISK 2, DEFERRED 0 (F38 is Positive and was not counted before).
 
 **Findings not fully closed, in order of importance:**
 
@@ -1038,6 +1056,24 @@ Scope: the changes since the last substantive entry of this audit: 0.0.11 (2026-
 **Severity:** Positive
 **Evidence:** all 41 Move tests pass; the `seal_approve*` policies are side-effect-free and version-gated as the SEAL lens requires, and the policy package identifiers the client generates from are the 0.0.11 record.
 
+### Part B documentation pass (2026-11-26)
+
+Scope: every tracked file read against the workspace's `docs/operations/DOCUMENTATION_STANDARD.md` and annotated (Part B Phase 1, the sixteenth repository, the second of the Move packages); the DOCS, RFC,
+IOP and PRIV lenses applied for the first time. Before and after editing: `sui move build --build-env testnet --lint --warnings-are-errors`, `sui move test --build-env testnet --coverage` (41 passed, module
+coverage 100.00 %), the two offline script tests and shellcheck (`-x -P SCRIPTDIR`) passed. **The compiled bytecode of every module, tests included, is identical** (eight `.mv` hashes compared before and after),
+and the diff of every other file is comment-only once full-line comments are removed, except the documents. No defect was found in the code.
+
+### F39 — Documentation drift found by the documentation pass
+**Severity:** Low   **Disposition:** RESOLVED (2026-11-26, unreleased)
+**Where:** `README.md`, `tests/nft_gate_tests.move` and `tests/timelock_tests.move` (comments), `CLAUDE.md`, this audit.
+**Issue:** (1) the README said 37 unit tests (41); (2) two test comments pointed at `repos/seal-client/tests/conformance-vectors.json`, the repository's name before the C0 rename (it is `sealed-storage-client`); (3) there was no
+`CONTRIBUTING.md` or `AGENTS.md`, no README Development section, and CLAUDE.md lacked Commands, Gotchas and Related; (4) the audit's header called the package `seal_policies` v0.0.8 as current, listed npm 0.0.8
+and consumers at `^0.0.7`, and its counts line stopped at 37 findings (F38 exists); (5) 76 declarations of the modules and their tests (constants, helpers, the five `SealedContent` views, the `config` views and
+test-only helpers) had no doc comment, and the test modules had no header.
+**Impact:** none on the on-chain code. A reader could not tell what is current, and the stale repository name in a test comment sent a reader to a path that no longer exists.
+**Remediation / evidence:** the facts are checked against npm, `Published.toml`, the consumers' manifests and the sibling repository's `tests/conformance-vectors.json` (which names this repository's test files);
+the documents and comments are corrected; every declaration is documented. The corrected README and CHANGELOG ship with the next npm release (Phase 5; the modules and their bytecode do not change).
+
 ### Delta notes
 - **A11Y lens:** Move package: not triggered.
 - **Supply chain:** published through the tag-gated trusted-publisher workflow with provenance (unchanged); Dependabot configuration present.
@@ -1223,6 +1259,52 @@ UI audits' concern (sealed-storage-ui).
 
 ---
 
+### B.DOCS-1 Ledger state
+
+41 tracked files: 33 done (31 measured against the thresholds), 8 excluded (2 lockfiles, licence text, the 5 generated pages under `docs/onchain/`), 0 pending, 0 `fu:` rows (2026-11-26, commit recorded in the ledger). Gate: `node scripts/check-docs.mjs --report sealed-storage-sui` gives 31 measured, 31 meeting the standard, header 100 %, declaration docs 100 %, comment ratio 0.31, no TODOs, no broken links.
+
+### B.DOCS-2 Commands run
+
+Every command in the README's Development section, CLAUDE.md's Commands section and CONTRIBUTING.md was run on 2026-11-26 and gave what the documents say: the lint-as-error build, `sui move test` (41 passed)
+with `--coverage` and `sui move coverage summary` (100.00 %), the two script tests, shellcheck, and `npm pack --dry-run` (18 files).
+
+### B.DOCS-3 Generated documentation
+
+`docs/INTEROP.md` is not present in this repository (the package has no interface beyond the Move ABI, which `docs/onchain/api-reference.md` documents). `Published.toml` is written by Sui and
+`deployments.json` by `scripts/publish.sh`; neither is edited by hand.
+
+### B.RFC-1 Standards inventory
+
+| Interface | Standard (and version) | Role | Where | Conformance evidence | Deviation |
+| --- | --- | --- | --- | --- | --- |
+| Object and event layouts | BCS (the Move binary encoding) | produces | `sources/` | the clients' decoders | — |
+| Seal identity layouts | Seal's `seal_approve*` interface (entry functions run under `dry_run`), layouts `[32-byte gate id][nonce]` and `[8-byte big-endian unlock_ms][nonce]` | implements | `nft_gate`, `timelock` | `conformance_gate_id_prefix_layout`, `conformance_unlock_ms_big_endian_matches_vector`, and the same vectors in `sealed-storage-client` | Seal is a Mysten project, not an open standard; the layouts are ours |
+| Deployment record | JSON (RFC 8259) | produces | `scripts/publish.sh` (`jq`) | the client generates from it | — |
+| Package manifest | TOML | consumes and produces | `Move.toml`, `Published.toml` | the Move build | — |
+| Release versions | semantic versioning | produces | `package.json` | the tag-version check in `npm-publish.yml` | patch-only until mainnet (workspace policy) |
+| Provenance | Sigstore / SLSA (npm provenance) | consumes | `npm-publish.yml` | `dist.attestations` on npm | — |
+
+### B.IOP-1 Export and exit drill
+
+Not applicable: the package holds no data. Pointers and policies are on-chain objects and functions anyone can call; the contract is public (Move source and ABI), so any other client can encrypt under the same
+identity layouts and any other operator can publish the same source (0BSD) as their own package.
+
+### B.IOP-2 Exit register entries
+
+npm (publication), GitHub Actions (CI), the Sui toolchain (the CLI and `suiup`, pinned by sha256 in `move-ci.yml`) and the Seal key servers (the committee a client chooses; see the Seal key-server note in the
+workspace decisions). At run time the chain and the key servers are the dependencies; there is no Meddleware service to leave.
+
+### B.IOP-3 API stability
+
+The public API is the modules' `public` and `entry` functions, events and abort codes (`docs/onchain/api-reference.md`). A published package version is immutable and upgrades must stay compatible; Seal
+identities stay under the original id, so an upgrade never re-seals content (README, Version gating). npm versioning is patch-only until mainnet.
+
+### B.PRIV-1 / B.PRIV-2 / B.PRIV-3 Privacy inventories
+
+Personal data: none held by the package. `SealedContent` and `SealedContentPublished` carry the publisher's address and a label of up to 256 bytes chosen by the publisher; both are public chain data and cannot
+be erased, so a publisher must not put personal data in a label (the legal register's question on wallet addresses and erasure, H4, applies). Nothing is stored in a browser or on disk by the package, and
+there is no analytics or logging. Recorded 2026-11-26.
+
 ## Section C — Test-coverage & hermetic/live split
 
 ### C.1 Coverage grade — A (41/41 on sui 1.81.0; 100% module coverage)
@@ -1397,6 +1479,21 @@ UI audits' concern (sealed-storage-ui).
 **TS lens baseline (package rows only):** TS-M7 holds (whitelisted files, no install-time code, B.TS);
 TS-M8 holds apart from the missing `npm audit` step on a package with no dependencies (F33); the other
 TS requirements are n/a (no TypeScript).
+
+**Lens baselines (DOCS, RFC, IOP, PRIV), first recorded 2026-11-26:**
+
+| ID | Holds? | Evidence |
+| --- | --- | --- |
+| DOCS-M1 | yes (all documents; 0BSD; CHANGELOG with an Unreleased section) | B.DOCS-1 |
+| DOCS-M2 | yes (every file's header and every declaration documented; ledger rows done; bytecode unchanged) | `check-docs.mjs --report sealed-storage-sui` |
+| DOCS-M3 | yes (the three version numbers, the git dependency and the bytecode rule are in CLAUDE.md) | CLAUDE.md |
+| DOCS-M4 | yes (commands run, links resolve, ids exist) | B.DOCS-2 |
+| DOCS-M5 | yes (no TODO, FIXME, XXX or HACK) | `check-docs.mjs` |
+| DOCS-M6 | yes (CLAUDE.md, README and the API reference verified against the source, F39; AGENTS.md points to CLAUDE.md) | this pass |
+| DOCS-M7 | yes (no secrets or private data; the ids are public chain ids) | inspection |
+| RFC-M1 to RFC-M7 | yes where they apply (B.RFC-1); M5 is the hosts', not a package's | B.RFC-1 |
+| IOP-M3, IOP-M5 | yes (B.IOP-3; no data, no ads, no tracking); IOP-M1, M2, M4, M6, M7: not applicable (no data, no service) | B.IOP-1 to 3 |
+| PRIV-M1 to PRIV-M8 | yes for the package; the publisher address and label on chain are public and noted for the legal register | B.PRIV |
 
 ## Implementation suggestions (SHOULD / MAY)
 
@@ -1578,6 +1675,11 @@ TS requirements are n/a (no TypeScript).
   - **Not exercised:** a mainnet committee; Permissioned-mode servers; a retired version on the LIVE package (the live `PolicyConfig` is at version 1).
 - 2026-11-01 — frontend-wave delta review of 0.0.11: read the 10-30 release diff (no source change) and re-ran the gates (see the delta section); recorded F38 as Positive. The release tool's bare "re-verified" mark was reworded to "released". `**Template:**` dates reconciled to the 2026-11-01 registry with no disposition change.
 - 2026-11-07 — mainnet-readiness sweep (delta; no Move source change). Ran `sui move test --coverage --build-env testnet` (sui 1.81.0): **41 tests pass, 100.00% coverage in each of `config`, `nft_gate`, `sealed_content`, `timelock`**; shellcheck (container) is clean on the 8 shell files and the offline script suite passes. `move-ci.yml` now enforces the 100% coverage gate beside its existing `--lint --warnings-are-errors` build (the "100%" claims came from the review sandbox and were not a gate). GAP I11 (UpgradeCap not burned) is closed only by the mainnet publish and custody steps: FU-0005 (publish and committee verification) and FU-0004 (burn). The `sealed_storage` mainnet publish needs the `access_gate` `Published.toml [published.mainnet]` committed and the rev in `Move.toml` bumped first (`docs/operations/MAINNET_PUBLISH.md`). Seal key-server terms (FU-0019) and the live round trip against the mainnet committee stay open. Not done: Move Prover or fuzzing (no specs exist).
+- 2026-11-26 — Part B documentation pass and first application of the DOCS, RFC, IOP and PRIV lenses (above, "Part B documentation pass"). Baseline before editing: the lint-as-error build, 41 tests with
+  coverage 100.00 %, the two script tests and shellcheck; the bytecode hashes recorded. Every tracked file annotated to the documentation standard (headers; a doc comment on every declaration of the modules and their
+  tests; a reason beside each statement group); `CONTRIBUTING.md` and `AGENTS.md` added; README Development section; CLAUDE.md Commands, Gotchas and Related. Found and fixed **F39** (documentation drift: a stale test
+  count and a stale repository name). Re-run after editing: the same commands, all passing, the bytecode identical, the diff proven comment-only outside the documents. Verified live: npm `0.0.12` latest, tag
+  `v0.0.12` = `3020a19` = the head of `main`, consumers read from their manifests, no open Dependabot pull request. No defect found in the code. Counts: F1 to F39.
 
 ## Pre-save consistency checklist (this pass)
 
@@ -1596,3 +1698,5 @@ TS requirements are n/a (no TypeScript).
 - [x] 2026-10-22 (live tests): F37 added (RESOLVED); the live key-server Section D box and four C.2 rows updated with digests; counts 37 findings (RESOLVED 25); log entry added.
 - 2026-10-24 — repository renamed from `seal-policies-sui` to `sealed-storage-sui` (workspace naming convention, `docs/architecture/ADR-0003-naming.md`): package, image, host and path names updated throughout. No finding, disposition or evidence changed.
 - 2026-10-24 — identifier alignment (`docs/architecture/ADR-0004-identifier-alignment.md`): Move package and alias `sealed_storage` (was `seal_policies`); modules compile byte-identical (Sui 1.81.0), so ids, identities and the upgrade path are unchanged; 41 Move tests pass. Module names (incl. `nft_gate`) kept on purpose.
+- [x] 2026-11-26: Template line cites DOCS, RFC, IOP and PRIV with their registry dates; their front-matter fields, Section B subsections and MUST rows added; F39 recorded in the findings and the log;
+  the counts line (39 findings), the header facts and the consumers current.

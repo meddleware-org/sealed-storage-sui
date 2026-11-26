@@ -74,8 +74,23 @@ module with its own `seal_approve*`; none changes the existing modules:
 
 ```bash
 sui move build --build-env testnet
-sui move test --build-env testnet   # 37 unit tests (config + nft_gate + timelock + sealed_content)
+sui move test --build-env testnet   # 41 unit tests (config + nft_gate + timelock + sealed_content)
 ```
+
+### Development
+
+The checks CI runs on every push (`.github/workflows/move-ci.yml`), with the Sui CLI pinned to 1.81.0 there:
+
+```bash
+sui move build --build-env testnet --lint --warnings-are-errors   # the build, with the Move linter on; a warning fails it
+sui move test --build-env testnet --coverage                       # 41 unit tests; CI requires every module at 100 % coverage
+sui move coverage summary                                          # the coverage figures the gate reads
+bash tests/scripts/ops_scripts_test.sh                             # offline tests of lib.sh, upgrade.sh and migrate.sh, against a stub `sui`
+bash tests/scripts/transfer_test.sh                                # offline tests of transfer-authority.sh and multisig-address.sh
+shellcheck -x -P SCRIPTDIR scripts/*.sh tests/scripts/*.sh         # the lint CI runs on the shell scripts
+```
+
+How to propose a change: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Deployments
 

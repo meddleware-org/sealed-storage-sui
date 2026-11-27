@@ -77,6 +77,10 @@ Commit messages: one short line, no body, no trailer.
 - **The scripts never switch the active Sui env.** They refuse unless it already is the target network, and mainnet needs `MAINNET_CONFIRM=1` and `EXPECTED_SIGNER`.
 - **There is no `mw-audit-gate`**: the package has no npm dependencies; CI is the Move CI.
 
+## Documentation rules (workspace documentation standard, D144)
+
+Every module, struct, function, constant and error code has a `///` doc comment, and line comments say why. `node scripts/check-docs.mjs --report sealed-storage-sui` (in the workspace repository) is the gate. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Related
 
 - The audit: [`docs/audit/sealed-storage-sui-audit.md`](docs/audit/sealed-storage-sui-audit.md); custody lifecycle: [`CUSTODY.md`](CUSTODY.md); how to propose a change: [`CONTRIBUTING.md`](CONTRIBUTING.md).

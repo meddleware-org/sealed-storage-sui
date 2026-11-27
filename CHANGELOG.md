@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.0.13] - 2026-11-27
+
 ### Changed
 
 - Documentation: every file is annotated line by line and has a header (every declaration of the modules and their tests has a doc comment); `CONTRIBUTING.md` and `AGENTS.md` added; README Development section; CLAUDE.md Commands, Gotchas and Related.
